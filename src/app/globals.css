@@ -128,11 +128,6 @@
   animation: scrollcue 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-/* ── Manifesto: words light up as you scroll ── */
-.word {
-  opacity: clamp(0.14, calc(var(--p, 1) * var(--n) * 1.25 - var(--i)), 1);
-  transition: opacity 0.25s linear;
-}
 
 @theme inline {
   --font-display: var(--font-archivo);

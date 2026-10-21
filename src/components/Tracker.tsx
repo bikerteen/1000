@@ -19,7 +19,6 @@ import {
 } from "@/lib/format";
 import Flash, { type FlashEvent } from "./Flash";
 import Hero from "./Hero";
-import Manifesto from "./Manifesto";
 import ShotSheet from "./ShotSheet";
 import StatusPicker from "./StatusPicker";
 import Wall from "./Wall";
@@ -180,7 +179,6 @@ export default function Tracker({
         onNew={() => setEditing("new")}
         onPick={(s) => setEditing(s)}
       />
-      <Manifesto owner={meta.owner} />
 
       <div className="overflow-hidden border-y-2 border-ink bg-acid py-2.5 text-ink">
         <div className="animate-marquee flex w-max">
