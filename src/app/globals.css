@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f3f0e8;
+  --color-ink: #0b0b0b;
+  --color-acid: #d4ff2e;
+  --color-signal: #ff3d1f;
+  --color-cobalt: #2e4bff;
+  --color-fog: #8d897f;
+  --color-rule: #0b0b0b26;
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-stamp: stamp 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  --animate-rise: rise 600ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  --animate-reveal: reveal 1.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fade: fade 1.4s ease both;
+  --animate-moonrise: moonrise 3.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shake: shake 480ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-10px);
+  }
+  40%,
+  80% {
+    transform: translateX(10px);
+  }
+}
+
+/* Unlock screen: a moon rising from the bottom edge, like a door. */
+.moon-door {
+  width: min(150vw, 1300px);
+  aspect-ratio: 1;
+  left: 50%;
+  top: 70svh;
+  transform: translateX(-50%);
+}
+
+@keyframes reveal {
+  from {
+    transform: translateY(108%);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes moonrise {
+  from {
+    opacity: 0;
+    transform: translateY(14%) scale(0.96);
+  }
+}
+
+@keyframes scrollcue {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  45% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  55% {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+/* ── Hero moon ── */
+.moon-wrap {
+  width: 94vw;
+  aspect-ratio: 1;
+  right: -44vw;
+  top: 17svh;
+  transform: translate3d(
+    calc(var(--mx, 0) * -36px),
+    calc(var(--my, 0) * -24px),
+    0
+  );
+  transition: transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (width >= 40rem) {
+  .moon-wrap {
+    width: min(74vh, 50vw);
+    right: -7vw;
+    top: 11vh;
+  }
+}
+
+.moon {
+  background:
+    radial-gradient(circle at 33% 28%, rgb(255 255 255 / 0.5), transparent 38%),
+    radial-gradient(ellipse 26% 20% at 58% 34%, rgb(70 64 56 / 0.2), transparent 70%),
+    radial-gradient(ellipse 22% 26% at 36% 60%, rgb(70 64 56 / 0.16), transparent 70%),
+    radial-gradient(ellipse 14% 12% at 70% 64%, rgb(70 64 56 / 0.18), transparent 70%),
+    radial-gradient(circle at 46% 46%, rgb(60 55 48 / 0.16) 0 1.8%, transparent 3.4%),
+    radial-gradient(circle at 24% 42%, rgb(60 55 48 / 0.18) 0 1.6%, transparent 2.6%),
+    radial-gradient(circle at 64% 78%, rgb(60 55 48 / 0.14) 0 2.4%, transparent 4.2%),
+    radial-gradient(circle at 78% 46%, rgb(60 55 48 / 0.14) 0 1.4%, transparent 2.4%),
+    radial-gradient(circle at 40% 36%, #f8f5ee 0%, #e7e2d6 36%, #bdb7a9 66%, #7a756c 88%, #45423c 100%);
+  box-shadow:
+    0 0 90px 10px rgb(243 240 232 / 0.07),
+    0 0 260px 60px rgb(243 240 232 / 0.05),
+    inset -50px -40px 90px rgb(0 0 0 / 0.5);
+}
+
+.scroll-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.scroll-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-paper);
+  animation: scrollcue 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* ── Manifesto: words light up as you scroll ── */
+.word {
+  opacity: clamp(0.14, calc(var(--p, 1) * var(--n) * 1.25 - var(--i)), 1);
+  transition: opacity 0.25s linear;
+}
+
+@theme inline {
+  --font-display: var(--font-archivo);
+  --font-serif: var(--font-instrument);
+  --font-mono: var(--font-space-mono);
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(-14deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-6deg);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+html {
+  background: var(--color-ink);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  min-height: 100dvh;
+}
+
+/* Paper grain over everything. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: var(--color-acid);
+  color: var(--color-ink);
+}
+
+@utility display {
+  font-family: var(--font-display);
+  font-stretch: 62%;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.84;
+  letter-spacing: -0.005em;
+}
+
+@utility kicker {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
