@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { unlock, type UnlockState } from "@/app/actions";
 import Sky from "./Sky";
 
@@ -11,6 +11,13 @@ export default function UnlockScreen() {
   const [state, action, pending] = useActionState<UnlockState, FormData>(unlock, {
     attempt: 0,
   });
+  const entering = pending || !!state.ok;
+
+  // Full page load (not a client navigation) so the proxy spends the one-time door cookie.
+  useEffect(() => {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load is the point (auth)
+    if (state.ok) window.location.assign("/");
+  }, [state]);
 
   return (
     <main className="relative isolate h-svh min-h-[600px] overflow-hidden bg-ink text-paper">
@@ -55,18 +62,18 @@ export default function UnlockScreen() {
               autoComplete="current-password"
               autoCapitalize="none"
               spellCheck={false}
-              disabled={pending}
+              disabled={entering}
               placeholder="password"
               className="min-w-0 flex-1 bg-transparent py-2 text-center font-serif text-3xl italic tracking-[0.12em] text-paper outline-none placeholder:text-paper/25 disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={pending}
+              disabled={entering}
               aria-label="Enter"
               className="group grid size-12 shrink-0 cursor-pointer place-items-center rounded-full bg-acid text-xl text-ink transition-transform duration-500 hover:scale-110 disabled:animate-pulse"
             >
               <span className="transition-transform duration-500 group-hover:translate-x-0.5">
-                {pending ? "·" : "→"}
+                {entering ? "·" : "→"}
               </span>
             </button>
           </form>
@@ -75,7 +82,7 @@ export default function UnlockScreen() {
             role="status"
             className={`kicker mt-4 h-4 ${state.error ? "text-signal" : "text-paper/40"}`}
           >
-            {state.error ?? (pending ? "Checking…" : "Shoot for the stars")}
+            {state.error ?? (state.ok ? "Welcome back." : pending ? "Checking…" : "Shoot for the stars")}
           </p>
         </div>
 

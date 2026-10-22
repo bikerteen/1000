@@ -1,8 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { AUTH_COOKIE, AUTH_MAX_AGE, isAuthed, passToken } from "@/lib/auth";
+import { DOOR_COOKIE, DOOR_TTL, doorToken, isSessionValid } from "@/lib/auth";
 import { store, type Fields } from "@/lib/store";
 import { CATEGORIES, STATUSES, type Shot, type ShotInput } from "@/lib/types";
 
@@ -18,9 +17,9 @@ function date(v: unknown): string | undefined {
   return typeof v === "string" && DATE.test(v) ? v : undefined;
 }
 
-function clean(input: ShotInput): Fields {
+function clean(input: ShotInput): Fields | null {
   const title = text(input.title, 280);
-  if (!title) throw new Error("A shot needs a title.");
+  if (!title) return null;
   return {
     title,
     target: text(input.target, 120),
@@ -33,34 +32,34 @@ function clean(input: ShotInput): Fields {
   };
 }
 
-// Server actions are reachable by direct POST, so each one checks the cookie too.
-async function requireAuth() {
-  if (!(await isAuthed((await cookies()).get(AUTH_COOKIE)?.value))) {
-    throw new Error("Locked. Enter the password first.");
-  }
-}
+// Results, not throws: production hides thrown messages from the client.
+export type Result = { ok: true; shots: Shot[] } | { ok: false; error: string; locked?: true };
 
-export async function saveShot(input: ShotInput): Promise<Shot[]> {
-  await requireAuth();
+const LOCKED: Result = { ok: false, error: "Locked. Enter the password again.", locked: true };
+
+export async function saveShot(token: string, input: ShotInput): Promise<Result> {
+  if (!(await isSessionValid(token))) return LOCKED;
   const fields = clean(input);
+  if (!fields) return { ok: false, error: "A shot needs a title." };
   if (input.id) await store.update(input.id, fields);
   else await store.create(fields);
-  return store.list();
+  return { ok: true, shots: await store.list() };
 }
 
-export async function deleteShot(id: string): Promise<Shot[]> {
-  await requireAuth();
+export async function deleteShot(token: string, id: string): Promise<Result> {
+  if (!(await isSessionValid(token))) return LOCKED;
   await store.remove(id);
-  return store.list();
+  return { ok: true, shots: await store.list() };
 }
 
 /* ───────── The door ───────── */
 
-export type UnlockState = { error?: string; attempt: number };
+export type UnlockState = { error?: string; ok?: true; attempt: number };
 
 export async function unlock(prev: UnlockState, form: FormData): Promise<UnlockState> {
   const password = process.env.SITE_PASSWORD;
-  if (!password) {
+  const token = await doorToken();
+  if (!password || !token) {
     return { error: "No password is set on the server.", attempt: prev.attempt + 1 };
   }
   // A beat of suspense, and a speed bump for guessers.
@@ -69,17 +68,13 @@ export async function unlock(prev: UnlockState, form: FormData): Promise<UnlockS
   if (guess.toLowerCase() !== password.toLowerCase()) {
     return { error: "Not quite. Try again.", attempt: prev.attempt + 1 };
   }
-  (await cookies()).set(AUTH_COOKIE, await passToken(password), {
+  (await cookies()).set(DOOR_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: AUTH_MAX_AGE,
+    maxAge: DOOR_TTL,
   });
-  redirect("/");
-}
-
-export async function lock() {
-  (await cookies()).delete(AUTH_COOKIE);
-  redirect("/unlock");
+  // The client does a full page load to "/", which spends the door cookie.
+  return { ok: true, attempt: prev.attempt + 1 };
 }

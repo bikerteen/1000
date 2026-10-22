@@ -83,7 +83,13 @@ function pgStore(url: string): Store {
     },
     async remove(id) {
       await init();
-      await sql`delete from shots where id = ${id}`;
+      // Delete and close the gap so №s stay 1…N. Shifting via negatives keeps
+      // unique(n) from colliding mid-update (Postgres checks it row by row).
+      await sql.transaction([
+        sql`with gone as (delete from shots where id = ${id} returning n)
+            update shots set n = -n where n > (select n from gone)`,
+        sql`update shots set n = -n - 1 where n < 0`,
+      ]);
     },
   };
 }
@@ -130,7 +136,15 @@ function fileStore(): Store {
           s.id === id ? { ...s, ...f, updatedAt: new Date().toISOString() } : s,
         ),
       ),
-    remove: (id) => mutate((shots) => shots.filter((s) => s.id !== id)),
+    remove: (id) =>
+      mutate((shots) => {
+        const gone = shots.find((s) => s.id === id);
+        if (!gone) return shots;
+        // Close the gap so №s stay 1…N.
+        return shots
+          .filter((s) => s.id !== id)
+          .map((s) => (s.n > gone.n ? { ...s, n: s.n - 1 } : s));
+      }),
   };
 }
 

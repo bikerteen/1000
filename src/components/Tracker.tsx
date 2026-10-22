@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { deleteShot, lock, saveShot } from "@/app/actions";
+import { deleteShot, saveShot, type Result } from "@/app/actions";
 import {
   STATUSES,
   STATUS_META,
@@ -39,9 +39,12 @@ const MANTRAS = [
 export default function Tracker({
   initial,
   today,
+  token,
 }: {
   initial: Data;
   today: string;
+  /** Session token for this page load only. Leaving the page drops it. */
+  token: string;
 }) {
   const { meta } = initial;
   const [shots, setShots] = useState(initial.shots);
@@ -86,13 +89,23 @@ export default function Tracker({
       .sort((a, b) => (newestFirst ? b.n - a.n : a.n - b.n));
   }, [shots, filter, query, newestFirst]);
 
+  // Unwraps an action result; back to the door if the session has expired.
+  const settle = useCallback((res: Result) => {
+    if (res.ok) return res.shots;
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load is the point (auth)
+    if (res.locked) window.location.assign("/unlock");
+    else setError(res.error);
+    return null;
+  }, []);
+
   const save = useCallback(
     (input: ShotInput, closeSheet = true) => {
       const before = input.id ? shots.find((s) => s.id === input.id) : undefined;
       setError(null);
       startTransition(async () => {
         try {
-          const next = await saveShot(input);
+          const next = settle(await saveShot(token, input));
+          if (!next) return;
           setShots(next);
           if (closeSheet) setEditing(null);
           if (!before) {
@@ -105,12 +118,12 @@ export default function Tracker({
               key: Date.now(),
             });
           }
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Couldn't save that one.");
+        } catch {
+          setError("Couldn't save that one. Check your connection and try again.");
         }
       });
     },
-    [shots],
+    [shots, settle, token],
   );
 
   const quickStatus = (shot: Shot, status: Status) =>
@@ -126,7 +139,9 @@ export default function Tracker({
   const remove = (id: string) =>
     startTransition(async () => {
       try {
-        setShots(await deleteShot(id));
+        const next = settle(await deleteShot(token, id));
+        if (!next) return;
+        setShots(next);
         setEditing(null);
       } catch {
         setError("Couldn't delete that one.");
@@ -147,6 +162,13 @@ export default function Tracker({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editing]);
+
+  // Coming back via the back button restores this page from memory — send it to the door instead.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => e.persisted && window.location.replace("/unlock");
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   const closeSheet = useCallback(() => setEditing(null), []);
   const endFlash = useCallback(() => setFlash(null), []);
@@ -379,9 +401,10 @@ export default function Tracker({
             <button onClick={exportJson} className="cursor-pointer hover:text-acid">
               Export backup (.json) ↓
             </button>
-            <form action={lock}>
-              <button className="cursor-pointer hover:text-signal">Lock ●</button>
-            </form>
+            {/* A full page load drops the in-memory session. */}
+            <a href="/unlock" className="hover:text-signal">
+              Lock ●
+            </a>
           </div>
         </div>
       </footer>
